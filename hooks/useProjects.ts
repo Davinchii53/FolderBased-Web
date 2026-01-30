@@ -1,24 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Project, Task, ChatSession } from '../types';
-import { getAllProjects, saveProject, deleteProject as dbDeleteProject, seedInitialData } from '../lib/db';
-
-const INITIAL_DATA: Project[] = [
-  { 
-    id: '1', 
-    title: 'Algorithms', 
-    subtitle: 'Sorting & Graphs', 
-    icon: 'cpu', 
-    color: 'cyan', 
-    status: 'Active',
-    createdAt: new Date().toISOString(),
-    context: 'User is focusing on Big O notation.',
-    chats: [],
-    tasks: [
-      { id: 't1', text: 'Watch Week 3 Lecture', completed: true },
-      { id: 't2', text: 'Implement QuickSort in Python', completed: true }
-    ]
-  }
-];
+// Removed 'seedInitialData' from import
+import { getAllProjects, saveProject, deleteProject as dbDeleteProject } from '../lib/db';
 
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -26,8 +9,10 @@ export function useProjects() {
 
   useEffect(() => {
     const loadData = async () => {
-      await seedInitialData(INITIAL_DATA);
+      // REMOVED: await seedInitialData(INITIAL_DATA);
+      
       const storedProjects = await getAllProjects();
+      // Sort: Newest first
       setProjects(storedProjects.reverse());
       setLoading(false);
     };
@@ -56,7 +41,6 @@ export function useProjects() {
     await saveProject(newProject);
   };
 
-  // --- DELETE PROJECT (The Big Red Button) ---
   const deleteProject = async (id: string) => {
     setProjects(prev => prev.filter(p => p.id !== id));
     await dbDeleteProject(id);
@@ -77,7 +61,6 @@ export function useProjects() {
     return updatedProject;
   };
 
-  // --- NEW: DELETE TASK ---
   const deleteTask = async (projectId: string, taskId: string) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
@@ -106,7 +89,6 @@ export function useProjects() {
     return updatedProject;
   };
 
-  // --- NEW: DELETE CHAT SESSION ---
   const deleteChatSession = async (projectId: string, chatId: string) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;

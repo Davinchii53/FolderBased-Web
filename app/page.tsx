@@ -4,12 +4,12 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Cpu, Globe, Code, ArrowUpRight, Search, Plus, Zap, LayoutGrid, X, 
-  CheckCircle2, Circle, MessageSquare, ChevronLeft, Send, MoreVertical, Trash2 
+  CheckCircle2, Circle, MessageSquare, ChevronLeft, Send, MoreVertical, Trash2,
+  FolderOpen
 } from 'lucide-react';
 
 import CreateModal from '../components/CreateModal';
 import CreateSessionModal from '../components/CreateSessionModal';
-// 1. IMPORT THE NEW DELETE MODAL
 import DeleteModal from '../components/DeleteModal';
 
 import { useProjects } from '../hooks/useProjects'; 
@@ -28,13 +28,10 @@ export default function CrystalDashboard() {
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
-  
-  // 2. NEW: UNIFIED DELETE STATE
-  // Instead of separate booleans, we store "What are we deleting?"
   const [deleteTarget, setDeleteTarget] = useState<{ 
     type: 'project' | 'task' | 'chat'; 
     id: string; 
-    secondaryId?: string; // For task/chat (needs projectId)
+    secondaryId?: string; 
     title: string; 
   } | null>(null);
 
@@ -72,9 +69,6 @@ export default function CrystalDashboard() {
     setIsTypingTask(false);
   };
 
-  // --- 3. REPLACED HANDLERS (No more window.confirm) ---
-
-  // Trigger Project Delete
   const requestDeleteProject = () => {
     if (!activeProject) return;
     setDeleteTarget({
@@ -84,7 +78,6 @@ export default function CrystalDashboard() {
     });
   };
 
-  // Trigger Task Delete
   const requestDeleteTask = (e: React.MouseEvent, taskId: string) => {
     e.stopPropagation();
     if (!activeProject) return;
@@ -96,7 +89,6 @@ export default function CrystalDashboard() {
     });
   };
 
-  // Trigger Chat Delete
   const requestDeleteChat = (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation();
     if (!activeProject) return;
@@ -108,13 +100,12 @@ export default function CrystalDashboard() {
     });
   };
 
-  // 4. THE EXECUTOR (Runs when you click "Delete" in the modal)
   const confirmDelete = async () => {
     if (!deleteTarget) return;
 
     if (deleteTarget.type === 'project') {
       await deleteProject(deleteTarget.id);
-      setActiveProject(null); // Go back to dashboard
+      setActiveProject(null);
     } 
     else if (deleteTarget.type === 'task' && deleteTarget.secondaryId) {
       const updated = await deleteTask(deleteTarget.secondaryId, deleteTarget.id);
@@ -126,7 +117,6 @@ export default function CrystalDashboard() {
     }
     setDeleteTarget(null);
   };
-
 
   const handleOpenSessionModal = () => {
     if (!activeProject) return;
@@ -196,57 +186,83 @@ export default function CrystalDashboard() {
         <AnimatePresence mode="wait">
           {!activeProject ? (
             
-            <motion.div 
-               key="dashboard"
-               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-               className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 flex-1 overflow-y-auto pb-32 pr-2 custom-scrollbar pt-4"
-            >
-               {projects.map((project, index) => {
-                 const progress = getProgress(project.tasks);
-                 const isLarge = index === 0;
-                 const theme = getColor(project.color);
-                 
-                 return (
-                   <motion.div 
-                      layoutId={`card-${project.id}`}
-                      key={project.id} 
-                      onClick={() => setActiveProject(project)}
-                      className={`${isLarge ? 'col-span-1 md:col-span-2 row-span-2 p-8' : 'col-span-1 p-6 h-64'} flex flex-col justify-between rounded-[2rem] bg-white/5 border border-white/10 backdrop-blur-md cursor-pointer group relative overflow-hidden`}
-                      whileHover={{ y: -5, borderColor: 'rgba(255,255,255,0.2)' }}
-                   >
-                      <div className="flex justify-between items-start z-10 relative">
-                         <div className={`p-3 rounded-xl bg-white/5 border border-white/5 ${theme.text}`}>
-                            {getIcon(project.icon, `text-${project.color}-300`)}
-                         </div>
-                         <div className="text-xs px-2 py-1 rounded-md border border-white/10 text-white/40">{project.status}</div>
-                      </div>
-
-                      <div className="z-10 relative">
-                         <motion.h3 layoutId={`title-${project.id}`} className={`${isLarge ? 'text-3xl' : 'text-xl'} font-light mb-1`}>{project.title}</motion.h3>
-                         <p className="text-white/50 text-sm mb-4">{project.subtitle}</p>
-                         <div className="space-y-2">
-                           <div className="flex justify-between text-xs font-medium tracking-wider text-white/60">
-                              <span>PROGRESS</span>
-                              <span>{progress}%</span>
+            /* --- DASHBOARD LOGIC --- */
+            projects.length === 0 ? (
+              // 1. EMPTY STATE (When no projects exist)
+              <motion.div 
+                 key="empty"
+                 initial={{ opacity: 0, scale: 0.95 }} 
+                 animate={{ opacity: 1, scale: 1 }}
+                 className="flex-1 flex flex-col items-center justify-center pb-20 text-center"
+              >
+                 <div className="w-24 h-24 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(34,211,238,0.1)]">
+                    <FolderOpen size={48} className="text-white/20" />
+                 </div>
+                 <h2 className="text-2xl font-light text-white mb-2">Nothing to see here</h2>
+                 <p className="text-white/40 max-w-sm mb-8">Your digital workspace is empty. Create a new context to start tracking your projects.</p>
+                 <button 
+                   onClick={() => setIsModalOpen(true)}
+                   className="px-8 py-3 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black font-medium transition-all shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_30px_rgba(34,211,238,0.5)]"
+                 >
+                   Create Context
+                 </button>
+              </motion.div>
+            ) : (
+              // 2. GRID STATE (When projects exist)
+              <motion.div 
+                 key="dashboard"
+                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                 className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 flex-1 overflow-y-auto pb-32 pr-2 custom-scrollbar pt-4"
+              >
+                 {projects.map((project, index) => {
+                   const progress = getProgress(project.tasks);
+                   const isLarge = index === 0;
+                   const theme = getColor(project.color);
+                   
+                   return (
+                     <motion.div 
+                        layoutId={`card-${project.id}`}
+                        key={project.id} 
+                        onClick={() => setActiveProject(project)}
+                        className={`${isLarge ? 'col-span-1 md:col-span-2 row-span-2 p-8' : 'col-span-1 p-6 h-64'} flex flex-col justify-between rounded-[2rem] bg-white/5 border border-white/10 backdrop-blur-md cursor-pointer group relative overflow-hidden`}
+                        whileHover={{ y: -5, borderColor: 'rgba(255,255,255,0.2)' }}
+                     >
+                        <div className="flex justify-between items-start z-10 relative">
+                           <div className={`p-3 rounded-xl bg-white/5 border border-white/5 ${theme.text}`}>
+                              {getIcon(project.icon, `text-${project.color}-300`)}
                            </div>
-                           <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
-                              <motion.div layoutId={`progress-${project.id}`} className={`h-full ${theme.bg}`} style={{ width: `${progress}%`, boxShadow: `0 0 10px var(--tw-shadow-color)` }}></motion.div>
-                           </div>
+                           <div className="text-xs px-2 py-1 rounded-md border border-white/10 text-white/40">{project.status}</div>
                         </div>
-                      </div>
-                      <div className={`absolute -bottom-10 -right-10 w-40 h-40 ${theme.bg} opacity-10 blur-[60px] rounded-full pointer-events-none group-hover:opacity-20 transition-opacity`}></div>
-                   </motion.div>
-                 );
-               })}
-               
-               <div className="col-span-1 md:col-span-1 rounded-[2rem] p-6 bg-black/40 border border-white/5 backdrop-blur-md flex flex-col justify-center gap-4">
-                  <div className="flex items-center gap-3 text-white/80"><Zap size={20} className="text-yellow-400" /><span className="font-medium">System Health</span></div>
-                  <div className="text-xs text-white/40">Tokens Saved: <span className="text-green-400 font-mono">14,203</span></div>
-               </div>
-            </motion.div>
+
+                        <div className="z-10 relative">
+                           <motion.h3 layoutId={`title-${project.id}`} className={`${isLarge ? 'text-3xl' : 'text-xl'} font-light mb-1`}>{project.title}</motion.h3>
+                           <p className="text-white/50 text-sm mb-4">{project.subtitle}</p>
+                           <div className="space-y-2">
+                             <div className="flex justify-between text-xs font-medium tracking-wider text-white/60">
+                                <span>PROGRESS</span>
+                                <span>{progress}%</span>
+                             </div>
+                             <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+                                <motion.div layoutId={`progress-${project.id}`} className={`h-full ${theme.bg}`} style={{ width: `${progress}%`, boxShadow: `0 0 10px var(--tw-shadow-color)` }}></motion.div>
+                             </div>
+                          </div>
+                        </div>
+                        <div className={`absolute -bottom-10 -right-10 w-40 h-40 ${theme.bg} opacity-10 blur-[60px] rounded-full pointer-events-none group-hover:opacity-20 transition-opacity`}></div>
+                     </motion.div>
+                   );
+                 })}
+                 
+                 {/* SYSTEM HEALTH - Only shows if projects exist */}
+                 <div className="col-span-1 md:col-span-1 rounded-[2rem] p-6 bg-black/40 border border-white/5 backdrop-blur-md flex flex-col justify-center gap-4">
+                    <div className="flex items-center gap-3 text-white/80"><Zap size={20} className="text-yellow-400" /><span className="font-medium">System Health</span></div>
+                    <div className="text-xs text-white/40">Tokens Saved: <span className="text-green-400 font-mono">14,203</span></div>
+                 </div>
+              </motion.div>
+            )
 
           ) : (
             
+            /* --- EXPANDED VIEW --- */
             <motion.div 
                layoutId={`card-${activeProject.id}`}
                key="expanded"
@@ -263,7 +279,6 @@ export default function CrystalDashboard() {
                  </div>
                  
                  <div className="flex items-center gap-2">
-                   {/* 5. UPDATED DELETE BUTTON */}
                    <button 
                      onClick={requestDeleteProject}
                      className="p-2 hover:bg-red-500/10 rounded-full transition-colors text-white/30 hover:text-red-500"
@@ -293,7 +308,6 @@ export default function CrystalDashboard() {
                              {task.completed ? <CheckCircle2 size={20} className="text-green-400 shrink-0" /> : <Circle size={20} className="text-white/20 group-hover:text-white/50 shrink-0" />}
                              <span className={`text-sm flex-1 truncate ${task.completed ? 'text-green-200 line-through' : 'text-white/80'}`}>{task.text}</span>
                              
-                             {/* 6. UPDATED TASK DELETE */}
                              <button 
                                onClick={(e) => requestDeleteTask(e, task.id)}
                                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-500/20 rounded text-white/30 hover:text-red-400 transition-all absolute right-2"
@@ -350,8 +364,6 @@ export default function CrystalDashboard() {
                                     
                                     <div className="flex items-center gap-2 relative z-10">
                                        <ArrowUpRight size={18} className="text-white/20 group-hover:text-white/60" />
-                                       
-                                       {/* 7. UPDATED CHAT DELETE */}
                                        <button 
                                          onClick={(e) => requestDeleteChat(e, chat.id)}
                                          className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/20 rounded-full text-white/30 hover:text-red-400 transition-all"
@@ -428,7 +440,6 @@ export default function CrystalDashboard() {
           )}
         </AnimatePresence>
 
-        {/* 8. RENDER THE DELETE MODAL */}
         <AnimatePresence>
           {deleteTarget && (
             <DeleteModal 
